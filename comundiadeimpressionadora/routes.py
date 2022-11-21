@@ -1,17 +1,18 @@
 from flask import render_template, redirect, url_for, flash, request
 from comundiadeimpressionadora import app, database, bcrypt
-from comundiadeimpressionadora.forms import Formlogin, FormCriarConta, FormEditarPerfil
-from comundiadeimpressionadora.models import Usuario
+from comundiadeimpressionadora.forms import Formlogin, FormCriarConta, FormEditarPerfil, FormCriarPost
+from comundiadeimpressionadora.models import Usuario, Post
 from flask_login import login_user, logout_user, current_user, login_required
 import secrets
 import os
 from PIL import Image
 
-lista_usuarios = ['Lira', 'João', 'Alon', 'Alessandra', 'Amanda']
+
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    posts = Post.query.order_by(Post.id.desc())
+    return render_template('home.html', posts=posts)
 
 
 @app.route('/contato')
@@ -22,6 +23,7 @@ def contato():
 @app.route('/usuarios')
 @login_required
 def usuarios():
+    lista_usuarios = Usuario.query.all()
     return render_template('usuarios.html', lista_usuarios=lista_usuarios)
 
 
@@ -66,10 +68,17 @@ def perfil():
     return render_template('perfil.html', foto_perfil=foto_perfil)
 
 
-@app.route('/post/criar')
+@app.route('/post/criar', methods=['GET', 'POST'])
 @login_required
 def criar_post():
-    return render_template('criarpost.html')
+    form = FormCriarPost()
+    if form.validate_on_submit():
+        post = Post(titulo=form.titulo.data, corpo=form.corpo.data, autor=current_user)
+        database.session.add(post)
+        database.session.commit()
+        flash(f'Post criado com sucesso', "alert-success")
+        return redirect(url_for('home'))
+    return render_template('criarpost.html', form=form)
 
 
 def salvar_imagem(imagem):
